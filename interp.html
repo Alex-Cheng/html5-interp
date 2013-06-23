@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame
+        Remove this if you use the .htaccess -->
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <title>Interpolations</title>
+        <meta name="description" content="" />
+        <meta name="generator" content="Studio 3 http://aptana.com/" />
+        <meta name="author" content="Alex Cheng" />
+        <meta name="viewport" content="width=device-width; initial-scale=1.0" />
+        <!-- Replace favicon.ico & apple-touch-icon.png in the root of your domain and delete these references -->
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+        
+        <style>
+            nav * { display: inline }
+            canvas { cursor: none; }
+        </style>
+        
+        <script type="text/javascript">
+        (function () {
+                var zuigan = function (a, b, c, f) {
+                    var n = a.length;
+                    var alf = new Array(n), bta = new Array(n);
+                    alf[0] = b[0]; 
+                    bta[0] = c[0]/alf[0];
+                    f[0] = f[0]/alf[0];
+                    for(var i = 1; i < n - 1; i ++) {
+                        alf[i] = b[i] - a[i] * bta[i-1];
+                        bta[i] = c[i] / alf[i];
+                        f[i] = (f[i] - a[i] * f[i-1])/alf[i];
+                    }
+                    
+                    alf[n-1] = b[n-1] - a[n-1] * bta[n-2];
+                    f[n-1] = (f[n-1] - a[n-1]*f[n-2])/alf[n-1];
+                    
+                    for(var i=n-2; i>=0; i--) {
+                        f[i]=f[i]-bta[i]*f[i+1];
+                    }
+                    return f;
+                };
+                
+                var test = function() {
+                    var aa = new Array(4), bb = new Array(4), cc = new Array(4), ff = new Array(4);
+                    aa[0] = 0; aa[1] = 2; aa[2] = 2; aa[3] = 1;
+                    bb[0] = 3; bb[1] = 3; bb[2] = 3; bb[3] = 3;
+                    cc[0] = 1; cc[1] = 1; cc[2] = 1; cc[3] = 0;
+                    ff[0] = 1; ff[1] = 0; ff[2] = 1; ff[3] = 0;
+                    var result = zuigan(aa,bb,cc,ff);
+                };
+            
+                var CartesianCoord = function (originX, originY) {
+                    if (originX == undefined) {
+                        originX = 0;
+                    }
+                    if (originY == undefined) {
+                        originY = 0;
+                    }
+                    
+                    this.originX = originX;
+                    this.originY = originY;
+                    
+                    this.padding = 20;
+                    
+                    this.arrowSize = 8;
+                    
+                    this.draw = function (context) {
+                        if (context == undefined) {
+                            alert("Argument context is required.");
+                            return;
+                        }
+                        
+                        var canvasWidth = context.canvas.width;
+                        var canvasHeight = context.canvas.height;
+                        
+                        // Draw origin point
+                        context.beginPath();
+                        context.arc(originX, originY, 3, 0, Math.PI * 2, true);
+                        
+                        context.fillStyle = "gray";
+                        context.lineWidth = 1;
+                        context.fill();
+                        
+                        // Draw X axis
+                        context.beginPath();
+                        context.strokeStyle = "red";
+                        context.moveTo(this.padding, this.originY);
+                        context.lineTo(canvasWidth - this.padding, this.originY);
+                        context.stroke();
+                        
+                        // Draw Y axis
+                        context.beginPath();
+                        context.strokeStyle = "green";
+                        context.moveTo(this.originX, this.padding);
+                        context.lineTo(this.originX, canvasHeight - this.padding);
+                        context.stroke();
+                        
+                        // Draw arrows
+                        context.beginPath();
+                        context.moveTo(this.originX, this.padding);
+                        context.lineTo(this.originX - this.arrowSize, this.padding + this.arrowSize);
+                        context.moveTo(this.originX, this.padding);
+                        context.lineTo(this.originX + this.arrowSize, this.padding + this.arrowSize);
+                        
+                        context.moveTo(canvasWidth - this.padding, originY);
+                        context.lineTo(canvasWidth - this.padding - this.arrowSize, originY - this.arrowSize);
+                        context.moveTo(canvasWidth - this.padding, originY);
+                        context.lineTo(canvasWidth - this.padding - this.arrowSize, originY + this.arrowSize);
+                        context.strokeStyle = "lightgray";
+                        context.stroke();
+                        
+                        // Draw X, Y text
+                        context.fillStyle = "white";
+                        context.font = "bold 16px Arial";
+                        context.fillText("Y", this.originX - 10, this.padding);
+                        context.fillText("X", canvasWidth - this.padding + 2, this.originY + 4);
+
+                    };
+
+                    this.convertX2XonCanvas = function (x) {
+                        return x + this.originX;
+                    };
+                    
+                    this.convertY2YonCanvas = function (y) {
+                        return this.originY - y;
+                    };
+                };
+                
+                var Cursor = function (x, y, coords) {
+                    this.positionX = x;
+                    this.positionY = y;
+                    this.coords = coords;
+                    
+                    this.valueX = function () {
+                        return this.positionX - this.coords.originX;
+                    };
+                    
+                    this.valueY = function () {
+                        return this.coords.originY - this.positionY;
+                    }
+
+                    this.draw = function (context) {
+                        var cursorSize = 30;
+                        
+                        context.beginPath();
+                        context.moveTo(this.positionX - cursorSize / 2, this.positionY);
+                        context.lineTo(this.positionX + cursorSize / 2, this.positionY);
+                        
+                        context.moveTo(this.positionX, this.positionY - cursorSize / 2);
+                        context.lineTo(this.positionX, this.positionY + cursorSize / 2);
+                        
+                        context.strokeStyle = "white";
+                        context.stroke();
+                        
+                        context.fillStyle = "white";
+                        context.font ="normal 11px Arial";
+                        var posText = "(" + this.valueX() + "," + this.valueY() + ")";
+                        context.fillText(posText, this.positionX + cursorSize / 2 + 2, this.positionY - 4);
+                    };
+                };
+            
+                var Point = function (x, y, coords) {
+                    this.x = x;
+                    this.y = y;
+                    this.coords = coords;
+                    
+                    if(this.x == undefined) {
+                        this.x = 0;
+                    }
+                    
+                    if(this.y == undefined) {
+                        this.y = 0;
+                    }
+                    
+                    this.draw = function (context) {
+                        // Draw the point
+                        context.beginPath();
+                        context.fillStyle ="pink";
+                        var x = context.coordSys.convertX2XonCanvas(this.x), y = context.coordSys.convertY2YonCanvas(this.y); 
+                        context.arc(x, y, 2, 0, Math.PI * 2, true);
+                        context.fill();
+                        
+                        // Draw the text (x, y)
+                        var valueText = "(" + this.x + "," + this.y + ")";
+                        context.font = "normal 10px Arial";
+                        context.fillText(valueText, x + 4, y - 2);
+                    };
+                }
+                
+                var LinearInterpolation = function (points) {
+                    this.points = points;
+                    
+                    this.draw = function (context) {                        
+                        context.strokeStyle = "BurlyWood";
+                        context.lineWidth = 1;
+                        context.beginPath();
+                        
+                        var count = 0;
+                        for(var k in this.points) {
+                            var p = this.points[k];
+
+                            if( count == 0) {
+                                context.moveTo(context.coordSys.convertX2XonCanvas(p.x), context.coordSys.convertY2YonCanvas(p.y));
+                            }
+                            else {
+                                context.lineTo(context.coordSys.convertX2XonCanvas(p.x), context.coordSys.convertY2YonCanvas(p.y));
+                            }
+                            count ++;
+                        }
+                        
+                        context.stroke();
+                    };
+                };
+                // End of LinearInterpolation 
+                
+                
+                var LagrangeInterpolation = function (points) {
+                    this.points = points;
+                    
+                    this.draw = function (context) {
+                        // w2 is w'(x_k) = (x_k - x0)(x_k - x1)...(x_k - x_k-1)(x_k - x_k+1)...(x_k - x_n)
+                        var w2 = new Array();
+                        for(var k = 0; k < this.points.length; k++) {
+                            var x_k = this.points[k].x;
+                            var w_k = 1.0;
+                            for(var i = 0; i < this.points.length; i++) {
+                                if( i != k ) {
+                                    w_k = w_k * (x_k - this.points[i].x); // (x_k - x_i) i = 0,1,...,n-1
+                                }
+                            }
+                            w2[k] = w_k;
+                        }
+                        //$("h1").text(w2.join());
+                                                
+                        context.strokeStyle = "Chartreuse";
+                        context.lineWidth = 1;
+                        context.beginPath();
+                        
+                        var minX = 10000000;
+                        var maxX = -10000000;
+                        for(var i = 0; i < this.points.length; i++) {
+                            var x = this.points[i].x;
+                            if(maxX < x) {
+                                maxX = x;
+                            }
+                            if(minX > x) {
+                                minX = x;
+                            }
+                        }
+                        
+                        context.beginPath();
+                        var first = true;
+                        for(var x = minX; x <= maxX; x++) {
+                            var l = 0;
+
+                            for(var k = 0; k < this.points.length; k++) {
+                                var y_k = this.points[k].y;
+                                var w = 1; // w = (x - x0)(x - x1)...(x - x_k-1)(x - x_k+1)...(x - x_n)
+                                for(var j = 0; j < this.points.length; j++) {
+                                    if(k != j) {
+                                        w *= (x - this.points[j].x);
+                                    }
+                                }
+                                
+                                l += (y_k * (w / w2[k]));
+                            }
+                            if(first) {
+                                context.moveTo(context.coordSys.convertX2XonCanvas(x), context.coordSys.convertY2YonCanvas(l));
+                                first = false;
+                            }
+                            else {
+                                context.lineTo(context.coordSys.convertX2XonCanvas(x), context.coordSys.convertY2YonCanvas(l));
+                            }
+                        }
+                        context.stroke();
+                    };
+                };
+                // End of LagrangeInterpolation
+                
+
+                // H(x) = sigma(f_j x a_j(x) + m_j x b_j(x)), j=0,1,...,n   m_j = f'(x_j) = 0
+                var HermiteInterpolation = function (points) {
+                    this.points = points;
+                    
+                    this.X = function (j) {
+                        return this.points[j].x;
+                    };
+                        
+                    this.Y = function (j) {
+                        return this.points[j].y;
+                    };
+                    
+                    this.alpha = function(j, x) {
+                        var n = this.points.length - 1;
+                        if(j != 0 && this.X(j-1) <= x && x <= this.X(j)) {
+                            return Math.pow((x - this.X(j-1)) / (this.X(j) - this.X(j-1)), 2) * (1 + 2 * ( (x - this.X(j)) / (this.X(j-1) - this.X(j)) )  );
+                        }
+                        if(j != n && this.X(j+1) >= x && x >= this.X(j)) {
+                            return Math.pow((x-this.X(j+1))/(this.X(j)-this.X(j+1)),2) * (1 + 2 * ((x - this.X(j)) / (this.X(j+1) - this.X(j)) ) );
+                        }
+                        return 0; 
+                    }
+                        
+                    this.draw = function (context) {
+                        context.strokeStyle = "Red";
+                        context.lineWidth = 1;
+                        context.beginPath();
+                        
+                        var minX = 10000000;
+                        var maxX = -10000000;
+                        for(var i = 0; i < this.points.length; i++) {
+                            var x = this.X(i);
+                            if(maxX < x) {
+                                maxX = x;
+                            }
+                            if(minX > x) {
+                                minX = x;
+                            }
+                        }
+                        
+                        context.beginPath();
+                        
+                        var n = this.points.length - 1;
+                        
+                        var thePoints = this.points;                        
+                        
+                        var first = true;
+                        for(var x = minX; x <= maxX; x++) {
+                            var h = 0;
+                            
+                            for(var j = 0; j <= n; j++) {
+                                h += this.Y(j) * this.alpha(j,x);
+                            }
+
+                            if(first) {
+                                context.moveTo(context.coordSys.convertX2XonCanvas(x), context.coordSys.convertY2YonCanvas(h));
+                                first = false;
+                            }
+                            else {
+                                context.lineTo(context.coordSys.convertX2XonCanvas(x), context.coordSys.convertY2YonCanvas(h));
+                            }
+                        }
+                        context.stroke();
+                    };
+                };
+                // End of HermiteInterpolation
+
+
+                var Spline3Interpolation = function (points) {
+                    this.points = points;
+                    
+                    this.X = function (j) {
+                        return this.points[j].x;
+                    };
+                        
+                    this.Y = function (j) {
+                        return this.points[j].y;
+                    };
+                    
+                    this.H = function (j) {
+                        return this.X(j+1) - this.X(j);
+                    };
+
+                    this.F = function (j, k) {
+                        return (this.Y(k) - this.Y(j)) / (this.X(k) - this.X(j));
+                    };
+                    
+                    this.M = new Array();
+                    
+                    this.initM = function () {
+                        var n = this.points.length - 1; // 0,1,...,n
+                        
+                        if(n <= 1) {
+                            this.M = new Array();
+                            return;
+                        }
+                        
+                        var gamma = new Array(); // gamma1, gamma2,...,gamma_n-1
+                        var mu = new Array(); // mu1, mu2,...,mu_n-1
+                        var g = new Array(); // g0, g1,...,g_n 
+                        
+                        g[0] = 3 * this.F(0, 1);
+                        g[n] = 3 * this.F(n-1, n);
+
+                        for(var j = 1; j <= n-1; j ++) {
+                            gamma[j] = this.H(j) / (this.H(j-1) + this.H(j));
+                            mu[j] = this.H(j-1)/(this.H(j-1) + this.H(j));
+                            g[j] = 3 * (gamma[j] * this.F(j-1, j) + mu[j] * this.F(j, j+1));
+                        }
+                        
+                        // Resolve formula Ax = f
+                        var bb = new Array();
+                        for(var i = 0; i <= n; i++) {
+                            bb[i] = 2;
+                        }
+                        gamma[0] = 0; gamma[n] = 1;
+                        mu[0] = 1; mu[n] = 0;
+                        this.M = zuigan(gamma, bb, mu, g);
+                    };
+                    
+                    this.alpha = function(j, x) {
+                        var n = this.points.length - 1;
+                        if(j != 0 && this.X(j-1) <= x && x <= this.X(j)) {
+                            return Math.pow((x - this.X(j-1)) / (this.X(j) - this.X(j-1)), 2) * (1 + 2 * ( (x - this.X(j)) / (this.X(j-1) - this.X(j)) )  );
+                        }
+                        if(j != n && this.X(j+1) >= x && x >= this.X(j)) {
+                            return Math.pow((x-this.X(j+1))/(this.X(j)-this.X(j+1)),2) * (1 + 2 * ((x - this.X(j)) / (this.X(j+1) - this.X(j)) ) );
+                        }
+                        return 0; 
+                    }
+                    
+                    this.beta = function(j, x) {
+                        var n = this.points.length - 1;
+                        if(j != 0 && this.X(j-1) <= x && x <= this.X(j)) {
+                            return Math.pow((x-this.X(j-1))/(this.X(j)-this.X(j-1)), 2) * (x - this.X(j));
+                        }
+                        if(j != n && this.X(j+1) >= x && x >= this.X(j)) {
+                            return Math.pow((x-this.X(j+1))/(this.X(j)-this.X(j+1)), 2) * (x - this.X(j));
+                        }
+                        return 0;
+                    }
+                        
+                    this.draw = function (context) {
+                        if(this.points.length < 3) {
+                            return;
+                        }
+                        
+                        context.strokeStyle = "Gold";
+                        context.lineWidth = 1;
+                        context.beginPath();
+                        
+                        var minX = 10000000;
+                        var maxX = -10000000;
+                        for(var i = 0; i < this.points.length; i++) {
+                            var x = this.X(i);
+                            if(maxX < x) {
+                                maxX = x;
+                            }
+                            if(minX > x) {
+                                minX = x;
+                            }
+                        }
+                        
+                        context.beginPath();
+                        
+                        var n = this.points.length - 1;
+                        
+                        var thePoints = this.points;                        
+                        
+                        this.initM();
+                        
+                        var first = true;
+                        for(var x = minX; x <= maxX; x++) {
+                            var h = 0;
+                            
+                            for(var j = 0; j <= n; j++) {
+                                h += this.Y(j) * this.alpha(j,x) + this.M[j] * this.beta(j, x);
+                            }
+
+                            if(first) {
+                                context.moveTo(context.coordSys.convertX2XonCanvas(x), context.coordSys.convertY2YonCanvas(h));
+                                first = false;
+                            }
+                            else {
+                                context.lineTo(context.coordSys.convertX2XonCanvas(x), context.coordSys.convertY2YonCanvas(h));
+                            }
+                        }
+                        context.stroke();
+                    };
+                };
+                // End of Spline3Interpolation
+                
+                $(window).load(function () {
+                    // test();
+                    // return;
+                    var canvas = $("#canvas").get(0);
+                    var ctx = canvas.getContext('2d');
+                    canvas.width = 1000;
+                    canvas.height = 600;
+                    
+                    canvas.clean = function () {
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    };
+
+                    canvas.clean();
+                    
+                    var coordSys = new CartesianCoord(canvas.width / 4, canvas.height / 2);
+                    ctx.coordSys = coordSys;
+                    
+                    var cursor = new Cursor(100, 100, ctx.coordSys);
+                    var points = new Array();
+                    var linearInter = new LinearInterpolation(points);
+                    var lagrangeInter = new LagrangeInterpolation(points);
+                    var hermiteInter = new HermiteInterpolation(points);
+                    var splineInter = new Spline3Interpolation(points);
+ 
+                    canvas.redraw = function () {
+                        canvas.clean();
+                        
+                        coordSys.draw(ctx);
+                        cursor.draw(ctx);
+                        
+                        for (var i in points) {
+                            points[i].draw(ctx);
+                        };
+                        
+                        $("input[type=checkbox]").each(function(index, ele) {
+                            if(this.checked) {
+                                eval(this.value).draw(ctx);
+                            } 
+                        });
+                    }
+                    
+                    canvas.redraw();
+
+                    $("#canvas").mousemove(function (e){
+                        var p = $(this).position();
+                        cursor.positionX = e.pageX - Math.round(p.left);
+                        cursor.positionY = e.pageY - Math.round(p.top);
+                        
+                        canvas.redraw();
+                    });
+                    
+                    $("#canvas").mousedown(function (e) {
+                        var p = new Point(cursor.valueX(), cursor.valueY(), coordSys);
+                        
+                        var needAdd = true;
+                        for( var k in points) {
+                            if( points[k].x == p.x) {
+                                points[k].y = p.y;
+                                needAdd = false;
+                                break;
+                            }
+                        }
+                        
+                        if(needAdd) {
+                            points.push(p);
+                        }
+
+                        points.sort(function (a, b) {
+                            return a.x - b.x;
+                        });                        
+                        canvas.redraw();
+                    });
+                    
+                    $("input[type=checkbox]").click(function() {
+                        canvas.redraw();
+                    })
+                });
+        })();
+        </script>
+    </head>
+    <body>
+        <div>
+            <header>
+                <h1>Interpolations</h1>
+            </header>
+            <nav>
+                <span style="color:BurlyWood ; background-color: black"><input type="checkbox" checked="true" value="linearInter" />Linear Interpolation</span>
+                <span style="color:Chartreuse ; background-color: black"><input type="checkbox" checked="true" value="lagrangeInter" />Lagrange Interpolation</span>
+                <span style="color:Red ; background-color: black"><input type="checkbox" checked="true" value="hermiteInter" />Hermite Interpolation</span>
+                <span style="color:Gold ; background-color: black"><input type="checkbox" checked="true" value="splineInter" />Spline3 Interpolation</span>
+            </nav>
+            <div>
+                <canvas id="canvas"></canvas>
+            </div>
+            <footer>
+                <p>
+                    &copy; Copyright 2012 by Alex Cheng
+                </p>
+            </footer>
+        </div>
+    </body>
+</html>
